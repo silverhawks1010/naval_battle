@@ -291,13 +291,23 @@ class GameWindow:
         mini_margin_left = self.width * 0.8
         mini_margin_top = self.height * 0.1
         
-        # Afficher le tour actuel
+        # Afficher le tour actuel et les instructions
         font = pygame.font.Font("assets/fonts/PirataOne-Regular.ttf", 48)
+        small_font = pygame.font.Font("assets/fonts/PirataOne-Regular.ttf", 36)
+        
         if self.game_phase == 'battle':
+            # Afficher le tour
             turn_text = "Votre tour" if self.my_turn else "Tour de l'adversaire"
             text = font.render(turn_text, True, self.WHITE)
-            text_rect = text.get_rect(center=(self.width/2, margin_top - 50))
+            text_rect = text.get_rect(center=(self.width/2, margin_top - 80))
             self.screen.blit(text, text_rect)
+            
+            # Afficher l'instruction pour rejouer
+            if self.my_turn:
+                instruction = "Touchez un bateau pour rejouer !"
+                text = small_font.render(instruction, True, self.WHITE)
+                text_rect = text.get_rect(center=(self.width/2, margin_top - 30))
+                self.screen.blit(text, text_rect)
         
         # Dessiner la grille principale (ennemie)
         self.draw_grid(margin_left, margin_top, cell_size, self.opponent_board, True)
@@ -549,7 +559,7 @@ class GameWindow:
             # Envoyer le tir au serveur
             if self.client:
                 self.client.send_shot(grid_x, grid_y)
-                self.my_turn = False  # Passer le tour
+                # Le tour sera changé dans handle_network_message en fonction du résultat
 
     def handle_join_events(self):
         """Gère les événements de l'écran de saisie d'IP"""
@@ -594,8 +604,8 @@ class GameWindow:
             if self.client:
                 self.client.send_shot_result(x, y, hit, sunk)
             
-            # Changer de tour si c'était le tour de l'adversaire
-            if not self.my_turn:
+            # Changer de tour seulement si l'adversaire a manqué
+            if not hit:
                 self.my_turn = True
         
         elif data['type'] == 'shot_result':
@@ -606,8 +616,11 @@ class GameWindow:
             # Mettre à jour la grille adverse
             if hit:
                 self.opponent_board.grid[y][x] = 3  # Touché
+                # Ne pas changer de tour si on a touché
+                self.my_turn = True
             else:
                 self.opponent_board.grid[y][x] = 2  # Manqué
+                self.my_turn = False
 
     def update(self):
         """Met à jour l'affichage"""
