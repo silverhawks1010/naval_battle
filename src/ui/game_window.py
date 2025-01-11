@@ -211,6 +211,27 @@ class GameWindow:
         grid_width = cell_size * grid_size
         grid_height = cell_size * grid_size
         
+        # Police pour les coordonnées et instructions
+        font = pygame.font.Font("assets/fonts/PirataOne-Regular.ttf", 36)
+        title_font = pygame.font.Font("assets/fonts/PirataOne-Regular.ttf", 48)
+        
+        # Afficher le titre
+        title = title_font.render("Placez vos bateaux", True, self.WHITE)
+        title_rect = title.get_rect(center=(self.width/2, margin_top - 80))
+        self.screen.blit(title, title_rect)
+        
+        # Afficher les instructions
+        if self.selected_ship:
+            instructions = [
+                f"Placement du {self.selected_ship.name} ({self.selected_ship.length} cases)",
+                "Appuyez sur R pour pivoter le bateau",
+                "Clic gauche pour placer"
+            ]
+            for i, text in enumerate(instructions):
+                instruction = font.render(text, True, self.WHITE)
+                rect = instruction.get_rect(center=(self.width/2, margin_top - 40 + i * 30))
+                self.screen.blit(instruction, rect)
+        
         # Police pour les coordonnées
         font = pygame.font.Font("assets/fonts/PirataOne-Regular.ttf", 36)
         

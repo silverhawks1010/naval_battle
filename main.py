@@ -50,9 +50,9 @@ def main():
             game_window.clear()
             game_window.draw_waiting_screen(server.local_ip)
             
-            # Si un deuxième joueur se connecte, passer à l'écran de placement
+            # Si un deuxième joueur se connecte, passer à l'écran de jeu
             if server and len(server.clients) == 2:
-                current_screen = 'placement'
+                current_screen = 'game'
                 
         elif current_screen == 'join':
             result, ip = game_window.handle_join_events()
@@ -63,7 +63,7 @@ def main():
                     game_window.is_connected = True
                     game_window.player_name = "Joueur 2"
                     game_window.init_game()  # Initialiser les plateaux et les bateaux
-                    current_screen = 'placement'
+                    current_screen = 'game'
                 else:
                     # Gérer l'échec de connexion ici si nécessaire
                     pass
@@ -75,18 +75,6 @@ def main():
             game_window.clear()
             game_window.draw_join_screen()
             
-        elif current_screen == 'placement':
-            result = game_window.handle_placement_events()
-            if not result:  # Si False, quitter le jeu
-                running = False
-            
-            game_window.clear()
-            game_window.draw_placement_screen()
-            
-            # Si tous les bateaux sont placés
-            if game_window.all_ships_placed():
-                current_screen = 'game'
-        
         elif current_screen == 'game':
             result = game_window.handle_game_events()
             if not result:  # Si False, quitter le jeu
@@ -95,17 +83,10 @@ def main():
             game_window.clear()
             game_window.draw_game_board()
             
-            # Si tous les bateaux sont coulés
-            if game_window.all_ships_sunk():
-                current_screen = 'end'
-        
-        elif current_screen == 'end':
-            result = game_window.handle_end_events()
-            if not result:  # Si False, quitter le jeu
-                running = False
-            
-            game_window.clear()
-            game_window.draw_end_screen()
+            # Si tous les bateaux sont placés et que c'est la phase de bataille
+            if game_window.game_phase == 'battle':
+                # Gérer la synchronisation des tirs ici
+                pass
         
         game_window.update()
 
