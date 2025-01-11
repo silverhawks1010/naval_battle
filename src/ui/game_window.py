@@ -25,6 +25,28 @@ class GameWindow:
         self.is_connected = False
         self.opponent_ready = False
         self.my_turn = False
+        self.game_phase = 'placement'  # 'placement' ou 'battle'
+        self.selected_ship = None
+        self.ships_to_place = []  # Liste des bateaux à placer
+        self.current_orientation = True  # True pour horizontal, False pour vertical
+        
+        # Plateaux de jeu
+        self.my_board = None
+        self.opponent_board = None
+        
+        # Couleurs
+        self.WHITE = (255, 255, 255)
+        self.BLUE = (0, 0, 255)
+        self.RED = (255, 0, 0)
+        self.GRAY = (128, 128, 128)
+        self.GREEN = (34, 139, 34)
+        self.BROWN = (119, 65, 39)
+
+        # État du jeu
+        self.is_host = False
+        self.is_connected = False
+        self.opponent_ready = False
+        self.my_turn = False
         self.player_name = "Joueur 1"  # Par défaut
         
         # Configuration des boutons du menu principal
@@ -172,29 +194,25 @@ class GameWindow:
         # Charger et redimensionner le fond
         background = pygame.image.load("assets/images/gamebord.png")
         background = pygame.transform.scale(background, (self.width, self.height))
-        
-        # Afficher le fond
         self.screen.blit(background, (0, 0))
         
-        # Afficher le nom du joueur
-        font = pygame.font.Font("assets/fonts/PirataOne-Regular.ttf", 55)
-        player_text = font.render(self.player_name, True, self.WHITE)
-        text_rect = player_text.get_rect(center=(self.width/2, self.height*0.1))
-        self.screen.blit(player_text, text_rect)
-        
-        # Réinitialiser les boutons pour le jeu
-        self.button_rects = {}
-        
+        if self.game_phase == 'placement':
+            self.draw_placement_grid()
+        else:
+            self.draw_battle_grids()
+
+    def draw_placement_grid(self):
+        """Dessine la grille de placement des bateaux"""
         # Configuration de la grille
-        grid_size = 10  # 10x10 cases
-        cell_size = 75  # Taille de chaque case en pixels
-        margin_left = self.width * 0.5 - grid_size * cell_size // 2  # Marge à gauche
-        margin_top = self.height * 0.5 - grid_size * cell_size // 2   # Marge en haut
+        grid_size = 10
+        cell_size = 75
+        margin_left = self.width * 0.5 - grid_size * cell_size // 2
+        margin_top = self.height * 0.5 - grid_size * cell_size // 2
         grid_width = cell_size * grid_size
         grid_height = cell_size * grid_size
         
         # Police pour les coordonnées
-        font = pygame.font.Font(None, 36)
+        font = pygame.font.Font("assets/fonts/PirataOne-Regular.ttf", 36)
         
         # Dessiner les lettres (A-J)
         letters = 'ABCDEFGHIJ'
@@ -211,6 +229,74 @@ class GameWindow:
             text_rect.center = (margin_left + i * cell_size + cell_size // 2, margin_top - 20)
             self.screen.blit(text, text_rect)
         
+        # Dessiner la grille et les bateaux placés
+        for i in range(grid_size + 1):
+            # Lignes horizontales
+            start_pos = (margin_left, margin_top + i * cell_size)
+            end_pos = (margin_left + grid_width, margin_top + i * cell_size)
+            pygame.draw.line(self.screen, self.WHITE, start_pos, end_pos, 1)
+            
+            # Lignes verticales
+            start_pos = (margin_left + i * cell_size, margin_top)
+            end_pos = (margin_left + i * cell_size, margin_top + grid_height)
+            pygame.draw.line(self.screen, self.WHITE, start_pos, end_pos, 1)
+            
+        # Afficher les bateaux déjà placés
+        if self.my_board:
+            for y in range(grid_size):
+                for x in range(grid_size):
+                    if self.my_board.grid[y][x] == 1:  # Case avec un bateau
+                        rect = pygame.Rect(margin_left + x * cell_size + 1,
+                                         margin_top + y * cell_size + 1,
+                                         cell_size - 2, cell_size - 2)
+                        pygame.draw.rect(self.screen, self.GREEN, rect)
+        
+        # Afficher le bateau en cours de placement
+        if self.selected_ship and self.game_phase == 'placement':
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            grid_x = int((mouse_x - margin_left) // cell_size)
+            grid_y = int((mouse_y - margin_top) // cell_size)
+            
+            if 0 <= grid_x < grid_size and 0 <= grid_y < grid_size:
+                # Vérifier si le placement est valide
+                valid = self.my_board.is_valid_position(self.selected_ship, grid_x, grid_y, self.current_orientation)
+                color = self.GREEN if valid else self.RED
+                
+                # Dessiner le bateau fantôme
+                for i in range(self.selected_ship.length):
+                    x = grid_x + (i if self.current_orientation else 0)
+                    y = grid_y + (0 if self.current_orientation else i)
+                    if 0 <= x < grid_size and 0 <= y < grid_size:
+                        rect = pygame.Rect(margin_left + x * cell_size + 1,
+                                         margin_top + y * cell_size + 1,
+                                         cell_size - 2, cell_size - 2)
+                        pygame.draw.rect(self.screen, color, rect, 2)
+
+    def draw_battle_grids(self):
+        """Dessine les deux grilles pour la phase de bataille"""
+        # Grille principale (grille ennemie)
+        grid_size = 10
+        cell_size = 75
+        margin_left = self.width * 0.5 - grid_size * cell_size // 2
+        margin_top = self.height * 0.5 - grid_size * cell_size // 2
+        
+        # Grille miniature (notre grille)
+        mini_cell_size = 30
+        mini_margin_left = self.width * 0.8
+        mini_margin_top = self.height * 0.1
+        
+        # Dessiner la grille principale (ennemie)
+        self.draw_grid(margin_left, margin_top, cell_size, self.opponent_board, True)
+        
+        # Dessiner la mini-grille (alliée)
+        self.draw_grid(mini_margin_left, mini_margin_top, mini_cell_size, self.my_board, False)
+
+    def draw_grid(self, margin_left, margin_top, cell_size, board, is_enemy):
+        """Dessine une grille avec ses bateaux et tirs"""
+        grid_size = 10
+        grid_width = cell_size * grid_size
+        grid_height = cell_size * grid_size
+        
         # Dessiner la grille
         for i in range(grid_size + 1):
             # Lignes horizontales
@@ -222,6 +308,21 @@ class GameWindow:
             start_pos = (margin_left + i * cell_size, margin_top)
             end_pos = (margin_left + i * cell_size, margin_top + grid_height)
             pygame.draw.line(self.screen, self.WHITE, start_pos, end_pos, 1)
+        
+        # Afficher le contenu de la grille
+        for y in range(grid_size):
+            for x in range(grid_size):
+                rect = pygame.Rect(margin_left + x * cell_size + 1,
+                                 margin_top + y * cell_size + 1,
+                                 cell_size - 2, cell_size - 2)
+                
+                if board.grid[y][x] == 1 and not is_enemy:  # Bateau allié
+                    pygame.draw.rect(self.screen, self.GREEN, rect)
+                elif board.grid[y][x] == 2:  # Tir manqué
+                    pygame.draw.circle(self.screen, self.WHITE,
+                                     rect.center, cell_size//4)
+                elif board.grid[y][x] == 3:  # Tir touché
+                    pygame.draw.rect(self.screen, self.RED, rect)
 
     def draw_waiting_screen(self, server_ip):
         """Dessine l'écran d'attente avec l'IP du serveur"""
@@ -348,25 +449,89 @@ class GameWindow:
         if button_name in self.buttons:
             self.buttons[button_name]['action'] = action
 
-    def draw_grid(self, x, y, cell_size, grid):
-        """Dessine une grille de jeu"""
-        for i in range(len(grid)):
-            for j in range(len(grid[i])):
-                rect = pygame.Rect(
-                    x + i * cell_size,
-                    y + j * cell_size,
-                    cell_size,
-                    cell_size
-                )
-                pygame.draw.rect(self.screen, self.WHITE, rect, 1)
+    def init_game(self):
+        """Initialise la partie"""
+        from src.game.board import Board
+        from src.game.ship import Ship
+        
+        self.my_board = Board()
+        self.opponent_board = Board()
+        
+        # Créer les bateaux
+        self.ships_to_place = [
+            Ship(5, "Porte-avions"),
+            Ship(4, "Croiseur"),
+            Ship(3, "Contre-torpilleur 1"),
+            Ship(3, "Contre-torpilleur 2"),
+            Ship(2, "Torpilleur")
+        ]
+        
+        self.selected_ship = self.ships_to_place[0]
+        self.game_phase = 'placement'
 
-    def update(self):
-        """Met à jour l'affichage"""
-        pygame.display.flip()
+    def handle_game_events(self):
+        """Gère les événements pendant la partie"""
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            
+            if self.game_phase == 'placement':
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:  # Clic gauche
+                        self.try_place_ship()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_r:  # Touche R pour rotation
+                        self.current_orientation = not self.current_orientation
+            
+            elif self.game_phase == 'battle' and self.my_turn:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:  # Clic gauche
+                        self.try_shoot()
+        
+        return True
 
-    def clear(self):
-        """Efface l'écran"""
-        self.screen.fill((0, 0, 0))
+    def try_place_ship(self):
+        """Essaie de placer le bateau sélectionné"""
+        if not self.selected_ship:
+            return
+            
+        # Calculer la position dans la grille
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        cell_size = 75
+        margin_left = self.width * 0.5 - 10 * cell_size // 2
+        margin_top = self.height * 0.5 - 10 * cell_size // 2
+        
+        grid_x = int((mouse_x - margin_left) // cell_size)
+        grid_y = int((mouse_y - margin_top) // cell_size)
+        
+        # Essayer de placer le bateau
+        if self.my_board.place_ship(self.selected_ship, grid_x, grid_y, self.current_orientation):
+            self.ships_to_place.remove(self.selected_ship)
+            if self.ships_to_place:
+                self.selected_ship = self.ships_to_place[0]
+            else:
+                self.selected_ship = None
+                self.game_phase = 'battle'
+                self.my_turn = self.is_host  # Le joueur 1 commence
+
+    def try_shoot(self):
+        """Essaie de tirer sur la grille ennemie"""
+        # Calculer la position dans la grille
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        cell_size = 75
+        margin_left = self.width * 0.5 - 10 * cell_size // 2
+        margin_top = self.height * 0.5 - 10 * cell_size // 2
+        
+        grid_x = int((mouse_x - margin_left) // cell_size)
+        grid_y = int((mouse_y - margin_top) // cell_size)
+        
+        # Vérifier si le tir est valide
+        if 0 <= grid_x < 10 and 0 <= grid_y < 10:
+            hit, sunk = self.opponent_board.receive_shot(grid_x, grid_y)
+            if hit or sunk:
+                # Envoyer le résultat du tir au serveur
+                pass
+            self.my_turn = False  # Passer le tour
 
     def handle_join_events(self):
         """Gère les événements de l'écran de saisie d'IP"""
@@ -394,3 +559,11 @@ class GameWindow:
                                 return ('return', None)
         
         return ('continue', None)
+
+    def update(self):
+        """Met à jour l'affichage"""
+        pygame.display.flip()
+
+    def clear(self):
+        """Efface l'écran"""
+        self.screen.fill((0, 0, 0))

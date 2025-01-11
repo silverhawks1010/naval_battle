@@ -1,10 +1,9 @@
 import pygame
-import sys
-from src.game.game import Game
+import threading
 from src.ui.game_window import GameWindow
+from src.game.game import Game
 from src.network.server import GameServer
 from src.network.client import GameClient
-import threading
 
 def main():
     game_window = GameWindow()
@@ -30,6 +29,7 @@ def main():
                     game_window.is_host = True
                     game_window.is_connected = True
                     game_window.player_name = "Joueur 1"
+                    game_window.init_game()  # Initialiser les plateaux et les bateaux
                     current_screen = 'waiting'
                 
             elif result == 'join':
@@ -50,9 +50,9 @@ def main():
             game_window.clear()
             game_window.draw_waiting_screen(server.local_ip)
             
-            # Si un deuxième joueur se connecte, passer à l'écran de jeu
+            # Si un deuxième joueur se connecte, passer à l'écran de placement
             if server and len(server.clients) == 2:
-                current_screen = 'game'
+                current_screen = 'placement'
                 
         elif current_screen == 'join':
             result, ip = game_window.handle_join_events()
@@ -62,7 +62,8 @@ def main():
                 if client.connect():
                     game_window.is_connected = True
                     game_window.player_name = "Joueur 2"
-                    current_screen = 'game'
+                    game_window.init_game()  # Initialiser les plateaux et les bateaux
+                    current_screen = 'placement'
                 else:
                     # Gérer l'échec de connexion ici si nécessaire
                     pass
@@ -74,13 +75,37 @@ def main():
             game_window.clear()
             game_window.draw_join_screen()
             
+        elif current_screen == 'placement':
+            result = game_window.handle_placement_events()
+            if not result:  # Si False, quitter le jeu
+                running = False
+            
+            game_window.clear()
+            game_window.draw_placement_screen()
+            
+            # Si tous les bateaux sont placés
+            if game_window.all_ships_placed():
+                current_screen = 'game'
+        
         elif current_screen == 'game':
-            result = game_window.handle_events()
+            result = game_window.handle_game_events()
             if not result:  # Si False, quitter le jeu
                 running = False
             
             game_window.clear()
             game_window.draw_game_board()
+            
+            # Si tous les bateaux sont coulés
+            if game_window.all_ships_sunk():
+                current_screen = 'end'
+        
+        elif current_screen == 'end':
+            result = game_window.handle_end_events()
+            if not result:  # Si False, quitter le jeu
+                running = False
+            
+            game_window.clear()
+            game_window.draw_end_screen()
         
         game_window.update()
 
@@ -91,5 +116,5 @@ def main():
         server.server.close()
     pygame.quit()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
