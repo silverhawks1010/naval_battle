@@ -30,6 +30,7 @@ def main():
                     game_window.is_connected = True
                     game_window.player_name = "Joueur 1"
                     game_window.init_game()  # Initialiser les plateaux et les bateaux
+                    game_window.set_client(client)  # Configurer le client réseau
                     current_screen = 'waiting'
                 
             elif result == 'join':
@@ -53,6 +54,7 @@ def main():
             # Si un deuxième joueur se connecte, passer à l'écran de jeu
             if server and len(server.clients) == 2:
                 current_screen = 'game'
+                game_window.my_turn = True  # Le joueur 1 commence
                 
         elif current_screen == 'join':
             result, ip = game_window.handle_join_events()
@@ -63,6 +65,8 @@ def main():
                     game_window.is_connected = True
                     game_window.player_name = "Joueur 2"
                     game_window.init_game()  # Initialiser les plateaux et les bateaux
+                    game_window.set_client(client)  # Configurer le client réseau
+                    game_window.my_turn = False  # Le joueur 2 attend son tour
                     current_screen = 'game'
                 else:
                     # Gérer l'échec de connexion ici si nécessaire
@@ -82,11 +86,6 @@ def main():
             
             game_window.clear()
             game_window.draw_game_board()
-            
-            # Si tous les bateaux sont placés et que c'est la phase de bataille
-            if game_window.game_phase == 'battle':
-                # Gérer la synchronisation des tirs ici
-                pass
         
         game_window.update()
 

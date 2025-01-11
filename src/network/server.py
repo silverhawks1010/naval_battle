@@ -27,25 +27,45 @@ class GameServer:
     def handle_client(self, client, addr):
         """Gère la connexion avec un client"""
         player_id = len(self.clients)
+        self.clients.append(client)
         print(f"Joueur {player_id + 1} connecté depuis {addr}")
 
         while True:
             try:
-                data = client.recv(2048).decode()
-                if not data:
+                message = client.recv(1024).decode()
+                if not message:
                     break
 
-                # Décoder les données JSON reçues
-                message = json.loads(data)
-                
-                # Envoyer les données à l'autre joueur
-                other_client = self.clients[1 - player_id] if len(self.clients) > 1 else None
-                if other_client:
-                    other_client.send(json.dumps(message).encode())
+                data = json.loads(message)
+                if data['type'] == 'shot':
+                    # Transmettre le tir à l'autre joueur
+                    target_player = 0 if player_id == 1 else 1
+                    if target_player < len(self.clients):
+                        shot_data = {
+                            'type': 'shot',
+                            'x': data['x'],
+                            'y': data['y'],
+                            'from_player': player_id
+                        }
+                        self.clients[target_player].send(json.dumps(shot_data).encode())
+
+                elif data['type'] == 'shot_result':
+                    # Transmettre le résultat du tir à l'autre joueur
+                    target_player = 0 if player_id == 1 else 1
+                    if target_player < len(self.clients):
+                        result_data = {
+                            'type': 'shot_result',
+                            'hit': data['hit'],
+                            'sunk': data['sunk'],
+                            'x': data['x'],
+                            'y': data['y']
+                        }
+                        self.clients[target_player].send(json.dumps(result_data).encode())
 
             except:
                 break
 
+        # Nettoyer la connexion
         print(f"Joueur {player_id + 1} déconnecté")
         if client in self.clients:
             self.clients.remove(client)
@@ -55,7 +75,6 @@ class GameServer:
         """Démarre le serveur et attend les connexions"""
         while len(self.clients) < 2:
             client, addr = self.server.accept()
-            self.clients.append(client)
             thread = threading.Thread(target=self.handle_client, args=(client, addr))
             thread.start()
 

@@ -34,52 +34,12 @@ class GameWindow:
         self.my_board = None
         self.opponent_board = None
         
-        # Couleurs
-        self.WHITE = (255, 255, 255)
-        self.BLUE = (0, 0, 255)
-        self.RED = (255, 0, 0)
-        self.GRAY = (128, 128, 128)
-        self.GREEN = (34, 139, 34)
-        self.BROWN = (119, 65, 39)
-
-        # État du jeu
-        self.is_host = False
-        self.is_connected = False
-        self.opponent_ready = False
-        self.my_turn = False
-        self.player_name = "Joueur 1"  # Par défaut
+        # Client réseau
+        self.client = None
         
-        # Configuration des boutons du menu principal
-        self.buttons = {
-            'host': {
-                'text': 'Héberger',
-                'color': self.BLUE,
-                'action': None,
-                'width': 200,
-                'height': 50
-            },
-            'join': {
-                'text': 'Rejoindre',
-                'color': self.GREEN,
-                'action': None,
-                'width': 200,
-                'height': 50
-            },
-            'quit': {
-                'text': 'Quitter',
-                'color': self.RED,
-                'action': None,
-                'width': 200,
-                'height': 50
-            }
-        }
-
-        pygame.mixer.music.load("assets/sound/background_sound.mp3")
-        pygame.mixer.music.play(-1)  # Play the music in a loop
-
-        # Charger les sons des boutons
-        self.button_hover_sound = pygame.mixer.Sound("assets/sound/button_hover.wav")
-        self.button_click_sound = pygame.mixer.Sound("assets/sound/button_click.wav")
+        # Sons
+        self.button_hover_sound = pygame.mixer.Sound("assets/sound/hover.wav")
+        self.button_click_sound = pygame.mixer.Sound("assets/sound/click.wav")
         
         # Initialiser le dictionnaire des rectangles de boutons
         self.button_rects = {}
@@ -305,6 +265,14 @@ class GameWindow:
         mini_cell_size = 30
         mini_margin_left = self.width * 0.8
         mini_margin_top = self.height * 0.1
+        
+        # Afficher le tour actuel
+        font = pygame.font.Font("assets/fonts/PirataOne-Regular.ttf", 48)
+        if self.game_phase == 'battle':
+            turn_text = "Votre tour" if self.my_turn else "Tour de l'adversaire"
+            text = font.render(turn_text, True, self.WHITE)
+            text_rect = text.get_rect(center=(self.width/2, margin_top - 50))
+            self.screen.blit(text, text_rect)
         
         # Dessiner la grille principale (ennemie)
         self.draw_grid(margin_left, margin_top, cell_size, self.opponent_board, True)
@@ -537,6 +505,9 @@ class GameWindow:
 
     def try_shoot(self):
         """Essaie de tirer sur la grille ennemie"""
+        if not self.my_turn or self.game_phase != 'battle':
+            return
+            
         # Calculer la position dans la grille
         mouse_x, mouse_y = pygame.mouse.get_pos()
         cell_size = 75
@@ -547,12 +518,13 @@ class GameWindow:
         grid_y = int((mouse_y - margin_top) // cell_size)
         
         # Vérifier si le tir est valide
-        if 0 <= grid_x < 10 and 0 <= grid_y < 10:
-            hit, sunk = self.opponent_board.receive_shot(grid_x, grid_y)
-            if hit or sunk:
-                # Envoyer le résultat du tir au serveur
-                pass
-            self.my_turn = False  # Passer le tour
+        if (0 <= grid_x < 10 and 0 <= grid_y < 10 and 
+            self.opponent_board.grid[grid_y][grid_x] not in [2, 3]):  # Case non déjà tirée
+            
+            # Envoyer le tir au serveur
+            if self.client:
+                self.client.send_shot(grid_x, grid_y)
+                self.my_turn = False  # Passer le tour
 
     def handle_join_events(self):
         """Gère les événements de l'écran de saisie d'IP"""
@@ -580,6 +552,37 @@ class GameWindow:
                                 return ('return', None)
         
         return ('continue', None)
+
+    def set_client(self, client):
+        """Définit le client réseau et configure le callback"""
+        self.client = client
+        self.client.set_callback(self.handle_network_message)
+
+    def handle_network_message(self, data):
+        """Gère les messages reçus du réseau"""
+        if data['type'] == 'shot':
+            # Recevoir un tir de l'adversaire
+            x, y = data['x'], data['y']
+            hit, sunk = self.my_board.receive_shot(x, y)
+            
+            # Envoyer le résultat du tir
+            if self.client:
+                self.client.send_shot_result(x, y, hit, sunk)
+            
+            # Changer de tour si c'était le tour de l'adversaire
+            if not self.my_turn:
+                self.my_turn = True
+        
+        elif data['type'] == 'shot_result':
+            # Recevoir le résultat de notre tir
+            x, y = data['x'], data['y']
+            hit, sunk = data['hit'], data['sunk']
+            
+            # Mettre à jour la grille adverse
+            if hit:
+                self.opponent_board.grid[y][x] = 3  # Touché
+            else:
+                self.opponent_board.grid[y][x] = 2  # Manqué
 
     def update(self):
         """Met à jour l'affichage"""
