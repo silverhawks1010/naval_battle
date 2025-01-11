@@ -112,7 +112,7 @@ class GameWindow:
         button_spacing = 125  # Espacement vertical entre les boutons
         buttons_start_y = -50  # Position Y du premier bouton par rapport au centre
 
-        # Créer et stocker les rectangles des boutons
+
         self.button_rects = {}
         for i, (key, button) in enumerate(self.buttons.items()):
             y_offset = buttons_start_y + (i * button_spacing)
