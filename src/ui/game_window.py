@@ -37,9 +37,34 @@ class GameWindow:
         # Client réseau
         self.client = None
         
+        # Configuration des boutons du menu principal
+        self.buttons = {
+            'host': {
+                'text': 'Héberger',
+                'color': self.BLUE,
+                'action': None,
+                'width': 442,
+                'height': 86
+            },
+            'join': {
+                'text': 'Rejoindre',
+                'color': self.GREEN,
+                'action': None,
+                'width': 442,
+                'height': 86
+            },
+            'quit': {
+                'text': 'Quitter',
+                'color': self.RED,
+                'action': None,
+                'width': 442,
+                'height': 86
+            }
+        }
+        
         # Sons
-        self.button_hover_sound = pygame.mixer.Sound("assets/sound/hover.wav")
-        self.button_click_sound = pygame.mixer.Sound("assets/sound/click.wav")
+        self.button_hover_sound = pygame.mixer.Sound("assets/sound/button_hover.wav")
+        self.button_click_sound = pygame.mixer.Sound("assets/sound/button_click.wav")
         
         # Initialiser le dictionnaire des rectangles de boutons
         self.button_rects = {}
