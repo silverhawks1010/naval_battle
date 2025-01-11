@@ -13,7 +13,9 @@ class GameClient:
     def connect(self):
         """Se connecte au serveur"""
         try:
+            self.client.settimeout(5)  # Timeout de 5 secondes pour la connexion
             self.client.connect((self.host, self.port))
+            self.client.settimeout(None)  # Remettre le timeout par défaut
             return True
         except:
             return False

@@ -223,6 +223,81 @@ class GameWindow:
             end_pos = (margin_left + i * cell_size, margin_top + grid_height)
             pygame.draw.line(self.screen, self.WHITE, start_pos, end_pos, 1)
 
+    def draw_waiting_screen(self, server_ip):
+        """Dessine l'écran d'attente avec l'IP du serveur"""
+        # Charger et redimensionner le fond
+        background = pygame.image.load("assets/images/gamebord.png")
+        background = pygame.transform.scale(background, (self.width, self.height))
+        self.screen.blit(background, (0, 0))
+        
+        # Afficher le message d'attente
+        font = pygame.font.Font("assets/fonts/PirataOne-Regular.ttf", 55)
+        text = font.render("En attente d'un autre joueur...", True, self.WHITE)
+        text_rect = text.get_rect(center=(self.width/2, self.height*0.4))
+        self.screen.blit(text, text_rect)
+        
+        # Afficher l'IP du serveur
+        font_ip = pygame.font.Font("assets/fonts/PirataOne-Regular.ttf", 36)
+        ip_text = font_ip.render(f"IP du serveur: {server_ip}", True, self.WHITE)
+        ip_rect = ip_text.get_rect(center=(self.width/2, self.height*0.5))
+        self.screen.blit(ip_text, ip_rect)
+
+    def draw_join_screen(self):
+        """Dessine l'écran de saisie d'IP"""
+        # Charger et redimensionner le fond
+        background = pygame.image.load("assets/images/gamebord.png")
+        background = pygame.transform.scale(background, (self.width, self.height))
+        self.screen.blit(background, (0, 0))
+        
+        # Réinitialiser les boutons
+        self.button_rects = {}
+        
+        # Afficher le titre
+        font = pygame.font.Font("assets/fonts/PirataOne-Regular.ttf", 55)
+        text = font.render("Entrez l'IP du serveur", True, self.WHITE)
+        text_rect = text.get_rect(center=(self.width/2, self.height*0.3))
+        self.screen.blit(text, text_rect)
+        
+        # Afficher l'IP en cours de saisie
+        if not hasattr(self, 'input_ip'):
+            self.input_ip = ""
+        
+        input_font = pygame.font.Font("assets/fonts/PirataOne-Regular.ttf", 36)
+        input_text = input_font.render(self.input_ip + "_", True, self.WHITE)
+        input_rect = input_text.get_rect(center=(self.width/2, self.height*0.4))
+        self.screen.blit(input_text, input_rect)
+        
+        # Dessiner le bouton de connexion
+        button_width, button_height = 442, 86
+        button_x = (self.width - button_width) // 2
+        button_y = self.height * 0.6
+        connect_rect = pygame.Rect(button_x, button_y, button_width, button_height)
+        
+        # Charger et redimensionner l'image du bouton
+        button_image = pygame.image.load("assets/images/button.png")
+        button_image = pygame.transform.scale(button_image, (button_width, button_height))
+        self.screen.blit(button_image, (button_x, button_y))
+        
+        # Ajouter le texte sur le bouton
+        button_text = font.render("Connexion", True, self.BROWN)
+        text_rect = button_text.get_rect(center=connect_rect.center)
+        text_rect.y -= 5
+        self.screen.blit(button_text, text_rect)
+        
+        self.button_rects['connect'] = connect_rect
+        
+        # Dessiner le bouton retour
+        return_y = self.height * 0.8
+        return_rect = pygame.Rect(button_x, return_y, button_width, button_height)
+        self.screen.blit(button_image, (button_x, return_y))
+        
+        return_text = font.render("Retour", True, self.BROWN)
+        text_rect = return_text.get_rect(center=return_rect.center)
+        text_rect.y = return_y + button_height//2 - 5
+        self.screen.blit(return_text, text_rect)
+        
+        self.button_rects['return'] = return_rect
+
     def handle_events(self):
         """Gère les événements du menu principal"""
         for event in pygame.event.get():
@@ -292,3 +367,30 @@ class GameWindow:
     def clear(self):
         """Efface l'écran"""
         self.screen.fill((0, 0, 0))
+
+    def handle_join_events(self):
+        """Gère les événements de l'écran de saisie d'IP"""
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+                
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    return ('connect', self.input_ip)
+                elif event.key == pygame.K_BACKSPACE:
+                    self.input_ip = self.input_ip[:-1]
+                elif event.unicode.isprintable():
+                    self.input_ip += event.unicode
+                    
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:  # Clic gauche
+                    for key, rect in self.button_rects.items():
+                        if rect.collidepoint(event.pos):
+                            self.button_click_sound.play()
+                            if key == 'connect':
+                                return ('connect', self.input_ip)
+                            elif key == 'return':
+                                self.input_ip = ""
+                                return ('return', None)
+        
+        return ('continue', None)

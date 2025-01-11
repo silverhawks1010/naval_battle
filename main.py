@@ -33,12 +33,8 @@ def main():
                     current_screen = 'waiting'
                 
             elif result == 'join':
-                # Se connecter au serveur
-                client = GameClient()
-                if client.connect():
-                    game_window.is_connected = True
-                    game_window.player_name = "Joueur 2"
-                    current_screen = 'game'
+                current_screen = 'join'
+                game_window.input_ip = ""  # Réinitialiser l'IP
                 
             elif not result:  # Si False, quitter le jeu
                 running = False
@@ -52,15 +48,31 @@ def main():
                 running = False
             
             game_window.clear()
-            # Afficher un message d'attente
-            font = pygame.font.Font(None, 74)
-            text = font.render("En attente d'un autre joueur...", True, game_window.WHITE)
-            text_rect = text.get_rect(center=(game_window.width/2, game_window.height/2))
-            game_window.screen.blit(text, text_rect)
+            game_window.draw_waiting_screen(server.local_ip)
             
             # Si un deuxième joueur se connecte, passer à l'écran de jeu
             if server and len(server.clients) == 2:
                 current_screen = 'game'
+                
+        elif current_screen == 'join':
+            result, ip = game_window.handle_join_events()
+            if result == 'connect' and ip:
+                # Se connecter au serveur avec l'IP saisie
+                client = GameClient(ip)
+                if client.connect():
+                    game_window.is_connected = True
+                    game_window.player_name = "Joueur 2"
+                    current_screen = 'game'
+                else:
+                    # Gérer l'échec de connexion ici si nécessaire
+                    pass
+            elif result == 'return':
+                current_screen = 'main'
+            elif not result:  # Si False, quitter le jeu
+                running = False
+            
+            game_window.clear()
+            game_window.draw_join_screen()
             
         elif current_screen == 'game':
             result = game_window.handle_events()

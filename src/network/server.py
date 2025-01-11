@@ -2,6 +2,18 @@ import socket
 import threading
 import json
 
+def get_local_ip():
+    """Obtient l'adresse IP locale de la machine"""
+    try:
+        # Crée une connexion temporaire pour obtenir l'IP locale
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        return local_ip
+    except:
+        return "127.0.0.1"
+
 class GameServer:
     def __init__(self, host='0.0.0.0', port=5555):
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -9,7 +21,8 @@ class GameServer:
         self.server.listen(2)  # Maximum 2 joueurs
         self.clients = []
         self.game_state = {}
-        print(f"Serveur démarré sur {host}:{port}")
+        self.local_ip = get_local_ip()
+        print(f"Serveur démarré sur {self.local_ip}:{port}")
 
     def handle_client(self, client, addr):
         """Gère la connexion avec un client"""
